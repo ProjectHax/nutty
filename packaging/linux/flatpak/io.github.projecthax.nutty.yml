@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 ProjectHax LLC
+#
+# Flatpak manifest. Built in CI by .github/workflows/release.yml with
+# flatpak/flatpak-github-actions in the KDE image whose tag matches
+# runtime-version below; locally:
+#
+#   flatpak-builder --user --install --force-clean build/flatpak \
+#       packaging/linux/flatpak/io.github.projecthax.nutty.yml
+app-id: io.github.projecthax.nutty
+runtime: org.kde.Platform
+runtime-version: '6.10'
+sdk: org.kde.Sdk
+command: nutty
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # System tray (StatusNotifierItem) and desktop notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.StatusNotifierItem-2-1
+  - --talk-name=org.freedesktop.Notifications
+  # Credentials in the user's keyring (GNOME Keyring / KWallet)
+  - --talk-name=org.freedesktop.secrets
+  # Sleep / hibernate / shutdown and sleep-wake signals via systemd-logind
+  - --system-talk-name=org.freedesktop.login1
+  # The OS's own batteries and USB UPS units
+  - --system-talk-name=org.freedesktop.UPower
+modules:
+  - name: nutty
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DNUTTY_BUILD_TESTS=OFF
+    sources:
+      - type: dir
+        path: ../../..
+        skip:
+          - build
+          - .flatpak-builder

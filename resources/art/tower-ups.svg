@@ -1,0 +1,58 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 ProjectHax LLC -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs>
+<linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#454c57"/><stop offset="0.5" stop-color="#30353d"/><stop offset="1" stop-color="#22262c"/></linearGradient>
+<linearGradient id="side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#262a31"/><stop offset="1" stop-color="#16181c"/></linearGradient>
+<linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a626e"/><stop offset="1" stop-color="#474e59"/></linearGradient>
+<linearGradient id="panel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e2227"/><stop offset="1" stop-color="#121418"/></linearGradient>
+<linearGradient id="lcd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fe0ff"/><stop offset="1" stop-color="#2f8fdc"/></linearGradient>
+<linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.1"/><stop offset="0.6" stop-color="#ffffff" stop-opacity="0.0"/></linearGradient>
+<radialGradient id="btnglow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#6fd6ff" stop-opacity="0.55"/><stop offset="1" stop-color="#6fd6ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#000000" stop-opacity="0.3"/><stop offset="0.55" stop-color="#000000" stop-opacity="0.12"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="132.0" cy="226" rx="74" ry="11" fill="url(#floor)"/>
+<polygon points="154,44 190,26 194,32 194,200 190,206 154,224" fill="url(#side)" />
+<polygon points="82,46 114,26 190,26 156,46" fill="url(#top)" />
+<rect x="76" y="44" width="84" height="180" rx="9" fill="url(#front)"/>
+<rect x="76.5" y="44.5" width="83" height="179" rx="8.5" fill="none" stroke="#ffffff" stroke-opacity="0.10"/>
+<rect x="88" y="60" width="60" height="70" rx="7" fill="url(#panel)"/>
+<rect x="96" y="69" width="44" height="28" rx="4" fill="url(#lcd)"/>
+<rect x="102" y="77" width="6" height="12" rx="1.5" fill="#0d2a40" fill-opacity="0.75"/>
+<rect x="110" y="77" width="6" height="12" rx="1.5" fill="#0d2a40" fill-opacity="0.75"/>
+<rect x="118" y="77" width="6" height="12" rx="1.5" fill="#0d2a40" fill-opacity="0.75"/>
+<rect x="126" y="77" width="6" height="12" rx="1.5" fill="#0d2a40" fill-opacity="0.25"/>
+<rect x="135" y="80" width="3" height="6" rx="1" fill="#0d2a40" fill-opacity="0.75"/>
+<rect x="96" y="69" width="44" height="11" rx="4" fill="#ffffff" fill-opacity="0.18"/>
+<circle cx="118.0" cy="114" r="15" fill="url(#btnglow)"/>
+<circle cx="118.0" cy="114" r="7.5" fill="#1a1d22" stroke="#6fd6ff" stroke-width="2"/>
+<path d="M118.0 110v3.5M115.1 111.8a3.6 3.6 0 1 0 5.8 0" fill="none" stroke="#6fd6ff" stroke-width="1.4" stroke-linecap="round"/>
+<circle cx="100" cy="114" r="2.3" fill="#3dd68c"/>
+<circle cx="136" cy="114" r="2.3" fill="#f5b73b" fill-opacity="0.85"/>
+<rect x="90" y="148" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="151.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<rect x="90" y="157" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="160.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<rect x="90" y="166" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="169.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<rect x="90" y="175" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="178.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<rect x="90" y="184" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="187.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<rect x="90" y="193" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="196.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<rect x="90" y="202" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="205.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<rect x="90" y="211" width="56" height="3.2" rx="1.6" fill="#15171b"/>
+<rect x="90" y="214.4" width="56" height="1" rx="0.5" fill="#ffffff" fill-opacity="0.06"/>
+<polygon points="168,94 186,82.84 186,86.84 168,98" fill="#0f1114" fill-opacity="0.7"/>
+<polygon points="168,110 186,98.84 186,102.84 168,114" fill="#0f1114" fill-opacity="0.7"/>
+<polygon points="168,126 186,114.84 186,118.84 168,130" fill="#0f1114" fill-opacity="0.7"/>
+<polygon points="168,142 186,130.84 186,134.84 168,146" fill="#0f1114" fill-opacity="0.7"/>
+<polygon points="168,158 186,146.84 186,150.84 168,162" fill="#0f1114" fill-opacity="0.7"/>
+<polygon points="168,174 186,162.84 186,166.84 168,178" fill="#0f1114" fill-opacity="0.7"/>
+<rect x="88" y="212" width="60" height="2.5" rx="1.25" fill="#6fd6ff" fill-opacity="0.55"/>
+<path d="M80 48h50.4l-46.4 75.6z" fill="url(#sheen)"/>
+<rect x="84" y="222" width="14" height="5" rx="2" fill="#121418"/>
+<rect x="138" y="222" width="14" height="5" rx="2" fill="#121418"/>
+</svg>

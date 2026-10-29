@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC0-1.0 -->
+<!-- Copyright (C) 2026 ProjectHax LLC -->
+<component type="desktop-application">
+  <id>io.github.projecthax.nutty</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+
+  <name>nutty</name>
+  <summary>Monitor UPS units, power stations and batteries</summary>
+
+  <developer id="io.github.projecthax">
+    <name>ProjectHax LLC</name>
+  </developer>
+
+  <description>
+    <p>
+      nutty lives in the system tray and keeps an eye on everything that powers
+      your computer. It watches NUT servers, apcupsd, EcoFlow power stations,
+      Home Assistant sensors and the operating system's own batteries, and
+      tells you as soon as something changes.
+    </p>
+    <ul>
+      <li>Monitor several devices at once, local or remote</li>
+      <li>Desktop, Pushover, ntfy, email, webhook and PagerDuty notifications</li>
+      <li>Sleep, hibernate or shut down on low battery or low runtime, with a countdown you can cancel</li>
+      <li>A dated history of every outage, with charge and load charts</li>
+      <li>Follows the system light and dark theme</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.projecthax.nutty.desktop</launchable>
+  <provides>
+    <binary>nutty</binary>
+  </provides>
+
+  <url type="homepage">https://github.com/ProjectHax/nutty</url>
+  <url type="bugtracker">https://github.com/ProjectHax/nutty/issues</url>
+  <url type="vcs-browser">https://github.com/ProjectHax/nutty</url>
+
+  <categories>
+    <category>System</category>
+    <category>Monitor</category>
+  </categories>
+
+  <keywords>
+    <keyword>UPS</keyword>
+    <keyword>NUT</keyword>
+    <keyword>battery</keyword>
+    <keyword>power</keyword>
+    <keyword>EcoFlow</keyword>
+    <keyword>shutdown</keyword>
+  </keywords>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#7fe0c0</color>
+    <color type="primary" scheme_preference="dark">#0f3d33</color>
+  </branding>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.1.0" date="2026-10-27">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

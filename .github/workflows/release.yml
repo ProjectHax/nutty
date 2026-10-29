@@ -1,0 +1,465 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 ProjectHax LLC
+
+name: release
+
+# Push a tag like `v0.1.0` to build every package and attach them to a GitHub
+# Release. It can also run manually (workflow_dispatch) to build the packages
+# as artifacts without cutting a release.
+#
+# Outputs:
+#   Linux   .deb + .rpm (against the distro Qt), AppImage and Flatpak (bundled Qt),
+#           each for x86_64 and aarch64
+#   macOS   one universal .app (arm64 + x86_64) in a .dmg and a .zip
+#   Windows a per-user Inno Setup installer and a portable .zip, x86_64 and arm64
+#
+# Signing:
+#   macOS   signed + notarized in-job by scripts/sign-macos.sh when the MACOS_*
+#           secrets are set; ad-hoc signed otherwise.
+#   Windows signed in-job with Azure Trusted Signing when the repository
+#           variables AZURE_CLIENT_ID and AZURE_TENANT_ID are set. The job trades
+#           its GitHub OIDC token for an Azure token, so no secret is stored: give
+#           the app registration a federated credential for this repository's
+#           `release` environment and the "Trusted Signing Certificate Profile
+#           Signer" role. TS_ENDPOINT / TS_ACCOUNT / TS_PROFILE variables override
+#           the defaults in scripts/sign-windows.sh. nutty.exe is signed before it
+#           is packed, and ISCC signs the installer and its uninstaller. Without
+#           the variables the build is unsigned, and
+#           `scripts/sign-windows.sh --release <tag>` can sign the release assets
+#           afterwards.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  QT_VERSION: "6.10.*"
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Every release ships complete translations. A tag whose catalogs are missing
+  # strings fails here, before any build: run `python3 scripts/translate.py`
+  # (needs the `claude` CLI), commit i18n/, and re-tag. Manual runs skip it.
+  # ----------------------------------------------------------------------------
+  translations:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      # The current Qt's lupdate, as the catalogs are generated with.
+      - uses: jurplel/install-qt-action@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+      - name: Translation catalogs are complete
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python3 scripts/translate.py --check
+
+  # ----------------------------------------------------------------------------
+  # .deb and .rpm, built against Ubuntu 24.04's Qt and smoke-tested by
+  # installing each into a clean container and rendering the home page there,
+  # which also proves every runtime plugin and QML module is a declared
+  # dependency.
+  # ----------------------------------------------------------------------------
+  linux-distro:
+    needs: translations
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++-14 cmake ninja-build pkg-config rpm dpkg-dev file \
+            qt6-base-dev qt6-base-dev-tools qt6-declarative-dev qt6-declarative-dev-tools \
+            qt6-shadertools-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
+            libgl-dev libvulkan-dev
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNUTTY_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build
+      - name: Package .deb + .rpm
+        run: |
+          set -eux
+          (cd build && cpack -G "DEB;RPM")
+          mkdir -p dist
+          cp build/*.deb build/*.rpm dist/
+          ls -l dist
+      - name: Smoke-test the .deb on a clean Ubuntu 24.04
+        run: |
+          docker run --rm -v "$PWD/dist:/dist:ro" -e DEBIAN_FRONTEND=noninteractive ubuntu:24.04 bash -euxc '
+            apt-get update
+            apt-get install -y /dist/*.deb
+            export QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software
+            nutty --version
+            nutty --config-dir /tmp/cfg --screenshot /tmp/home.png --page home
+            test -s /tmp/home.png'
+      - name: Smoke-test the .rpm on a clean Fedora
+        run: |
+          docker run --rm -v "$PWD/dist:/dist:ro" fedora:42 bash -euxc '
+            dnf install -y /dist/*.rpm
+            export QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software
+            nutty --version
+            nutty --config-dir /tmp/cfg --screenshot /tmp/home.png --page home
+            test -s /tmp/home.png'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nutty-linux-distro-${{ matrix.arch }}
+          if-no-files-found: error
+          path: dist/*
+
+  # ----------------------------------------------------------------------------
+  # AppImage with a bundled current Qt. GitHub runners lack FUSE, so the
+  # AppImage tools self-extract.
+  # ----------------------------------------------------------------------------
+  appimage:
+    needs: translations
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+            qt_host: linux
+            qt_arch: linux_gcc_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+            qt_host: linux_arm64
+            qt_arch: linux_gcc_arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++-14 ninja-build file libgl-dev libegl1 libvulkan-dev libfontconfig1 \
+            libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xkb1 \
+            libwayland-client0 libwayland-cursor0 libwayland-egl1
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.qt_host }}
+          arch: ${{ matrix.qt_arch }}
+          modules: qtshadertools
+          cache: true
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNUTTY_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build
+          DESTDIR="$PWD/AppDir" cmake --install build
+      - name: Build AppImage
+        run: |
+          set -eux
+          arch="${{ matrix.arch }}"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          base=https://github.com/linuxdeploy
+          wget -q "$base/linuxdeploy/releases/download/continuous/linuxdeploy-${arch}.AppImage"
+          wget -q "$base/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-${arch}.AppImage"
+          chmod +x linuxdeploy-*.AppImage
+          export QMAKE="$QT_ROOT_DIR/bin/qmake"
+          export LD_LIBRARY_PATH="$QT_ROOT_DIR/lib"
+          export QML_SOURCES_PATHS="$PWD/src/app/qml"
+          # Qt 6.10 merged the Wayland platform plugins into libqwayland.so; older
+          # Qts ship libqwayland-egl.so + libqwayland-generic.so. Take whichever exist.
+          EXTRA_PLATFORM_PLUGINS="$(cd "$QT_ROOT_DIR/plugins/platforms" && ls libqwayland*.so | paste -sd ';')"
+          export EXTRA_PLATFORM_PLUGINS
+          "./linuxdeploy-${arch}.AppImage" --appdir AppDir --plugin qt --output appimage
+          mv nutty*-"${arch}".AppImage "nutty-linux-${arch}.AppImage" 2>/dev/null \
+            || mv nutty*.AppImage "nutty-linux-${arch}.AppImage"
+      # A missing plugin doesn't fail linuxdeploy; it fails the user at runtime
+      # (no TLS = no SMTP/HTTPS, no wayland = blurry XWayland, ...).
+      - name: Check the bundled plugins and QML modules
+        run: |
+          set -eu
+          missing=0
+          for p in platforms/libqxcb.so 'platforms/libqwayland*.so' \
+                   tls/libqopensslbackend.so sqldrivers/libqsqlite.so \
+                   iconengines/libqsvgicon.so imageformats/libqsvg.so; do
+            # shellcheck disable=SC2086 # $p may be a glob
+            if ls AppDir/usr/plugins/$p >/dev/null 2>&1; then echo "  ok       $p"; else echo "  MISSING  $p"; missing=1; fi
+          done
+          for d in plugins/wayland-shell-integration qml/QtQuick/Controls qml/QtQuick/Shapes \
+                   qml/QtQuick/Layouts qml/QtQuick/Templates; do
+            if [ -d "AppDir/usr/$d" ]; then echo "  ok       $d"; else echo "  MISSING  $d"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || { echo "::error::the AppImage is missing runtime pieces"; exit 1; }
+      - name: Smoke-test the AppImage
+        run: |
+          set -eux
+          export APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software
+          "./nutty-linux-${{ matrix.arch }}.AppImage" --version
+          "./nutty-linux-${{ matrix.arch }}.AppImage" --config-dir /tmp/cfg --screenshot /tmp/home.png --page home
+          test -s /tmp/home.png
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nutty-linux-appimage-${{ matrix.arch }}
+          if-no-files-found: error
+          path: nutty-linux-${{ matrix.arch }}.AppImage
+
+  # ----------------------------------------------------------------------------
+  # Flatpak bundle on the KDE runtime. The image tag must match the manifest's
+  # runtime-version.
+  # ----------------------------------------------------------------------------
+  flatpak:
+    needs: translations
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.10
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v5
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: nutty-linux-${{ matrix.arch }}.flatpak
+          manifest-path: packaging/linux/flatpak/io.github.projecthax.nutty.yml
+          arch: ${{ matrix.arch }}
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
+          upload-artifact: false
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nutty-linux-flatpak-${{ matrix.arch }}
+          if-no-files-found: error
+          path: nutty-linux-${{ matrix.arch }}.flatpak
+
+  # ----------------------------------------------------------------------------
+  # macOS: one universal binary (Qt's macOS packages are universal), deployed
+  # with macdeployqt, then signed/notarized and packed by sign-macos.sh.
+  # ----------------------------------------------------------------------------
+  macos:
+    needs: translations
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Ensure Ninja
+        run: command -v ninja || brew install ninja
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtshadertools
+          cache: true
+      - name: App icon (.icns)
+        run: |
+          set -eux
+          iconset="$RUNNER_TEMP/nutty.iconset"
+          mkdir -p "$iconset"
+          for s in 16 32 128 256 512; do
+            cp "resources/appicon/png/nutty-$s.png" "$iconset/icon_${s}x${s}.png"
+            cp "resources/appicon/png/nutty-$((s * 2)).png" "$iconset/icon_${s}x${s}@2x.png"
+          done
+          iconutil -c icns "$iconset" -o resources/appicon/nutty.icns
+      - name: Build (universal)
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNUTTY_BUILD_TESTS=OFF \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+          cmake --build build
+      - name: Deploy Qt into the bundle
+        run: |
+          set -eux
+          app=build/src/app/nutty.app
+          macdeployqt "$app" -qmldir=src/app/qml -verbose=1
+          lipo -info "$app/Contents/MacOS/nutty"
+          rm -rf nutty.app && ditto "$app" nutty.app
+      - name: Sign, notarize + package
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: scripts/sign-macos.sh nutty.app nutty-macos-universal
+      - name: Smoke-test the bundle
+        run: |
+          QT_QPA_PLATFORM=offscreen nutty.app/Contents/MacOS/nutty --version
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nutty-macos-universal
+          if-no-files-found: error
+          path: |
+            nutty-macos-universal.dmg
+            nutty-macos-universal.zip
+
+  # ----------------------------------------------------------------------------
+  # Windows x64 and native arm64: windeployqt, optional Trusted Signing, a
+  # portable .zip and an Inno Setup installer.
+  # ----------------------------------------------------------------------------
+  windows:
+    needs: translations
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            arch: x86_64
+            msvc: amd64
+            qt_host: windows
+            qt_arch: win64_msvc2022_64
+          - runner: windows-11-arm
+            arch: arm64
+            msvc: arm64
+            qt_host: windows_arm64
+            qt_arch: win64_msvc2022_arm64
+    runs-on: ${{ matrix.runner }}
+    # The OIDC subject Azure trusts for signing (tag pushes and manual runs alike).
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SIGN: ${{ vars.AZURE_CLIENT_ID != '' }}
+      TS_ENDPOINT: ${{ vars.TS_ENDPOINT }}
+      TS_ACCOUNT: ${{ vars.TS_ACCOUNT }}
+      TS_PROFILE: ${{ vars.TS_PROFILE }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc }}
+      - name: Ensure Ninja
+        shell: pwsh
+        run: if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) { choco install ninja --no-progress -y }
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.qt_host }}
+          arch: ${{ matrix.qt_arch }}
+          modules: qtshadertools
+          cache: true
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNUTTY_BUILD_TESTS=OFF
+          cmake --build build
+          cmake --install build --prefix dist
+      - name: Deploy Qt
+        run: windeployqt --release --qmldir src/app/qml --no-compiler-runtime --no-opengl-sw dist/nutty.exe
+      # jsign is Java; not every runner image ships a JRE (windows-11-arm).
+      - uses: actions/setup-java@v4
+        if: env.SIGN == 'true'
+        with:
+          distribution: temurin
+          java-version: "21"
+      # GitHub OIDC token -> Azure access token for Trusted Signing, with plain
+      # REST calls (no Azure CLI, which not every runner image has).
+      - name: Get a Trusted Signing token
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          $oidc = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" `
+                     -Headers @{ Authorization = "bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
+          $body = @{
+            client_id             = "${{ vars.AZURE_CLIENT_ID }}"
+            scope                 = "https://codesigning.azure.net/.default"
+            grant_type            = "client_credentials"
+            client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+            client_assertion      = $oidc
+          }
+          $token = (Invoke-RestMethod -Method Post -Body $body `
+                      -Uri "https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }}/oauth2/v2.0/token").access_token
+          if (-not $token) { throw "no access token from Azure" }
+          Write-Output "::add-mask::$token"
+          "TS_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Sign nutty.exe
+        if: env.SIGN == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Empty repository variables mean "use the script's defaults".
+          [ -n "$TS_ENDPOINT" ] || unset TS_ENDPOINT
+          [ -n "$TS_ACCOUNT" ] || unset TS_ACCOUNT
+          [ -n "$TS_PROFILE" ] || unset TS_PROFILE
+          scripts/sign-windows.sh dist/nutty.exe
+          echo "JSIGN_CMD=$(scripts/sign-windows.sh --jsign-command)" >> "$GITHUB_ENV"
+      - name: Package .zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/* -DestinationPath "nutty-windows-${{ matrix.arch }}.zip"
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          # The version is the `VERSION x.y.z` line of project() in CMakeLists.txt.
+          $ver = (Select-String -Path CMakeLists.txt -Pattern '^\s+VERSION (\d+\.\d+\.\d+)').Matches[0].Groups[1].Value
+          # Inno resolves paths relative to the .iss file, so pass absolute ones.
+          $root = (Get-Location).Path
+          $isccArgs = @("/DMyAppVersion=$ver", "/DMyArch=${{ matrix.arch }}",
+                        "/DSourceDir=$root\dist", "/DAssetDir=$root\resources\appicon", "/O$root")
+          if ($env:JSIGN_CMD) {
+            # ISCC substitutes $f with the quoted path of each file it signs.
+            $isccArgs += "/DSignToolName=jsign"
+            $isccArgs += "/Sjsign=$($env:JSIGN_CMD.Trim()) `$f"
+          }
+          & $iscc @isccArgs "$root\packaging\windows\nutty.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify signatures
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          foreach ($f in @("dist\nutty.exe", "nutty-windows-${{ matrix.arch }}-setup.exe")) {
+            $sig = Get-AuthenticodeSignature $f
+            Write-Host "$f : $($sig.Status) $($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') { throw "$f is not validly signed" }
+          }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nutty-windows-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            nutty-windows-${{ matrix.arch }}.zip
+            nutty-windows-${{ matrix.arch }}-setup.exe
+
+  # ----------------------------------------------------------------------------
+  # Collect every package and attach them to the GitHub Release (tags only).
+  # ----------------------------------------------------------------------------
+  release:
+    needs: [linux-distro, appimage, flatpak, macos, windows]
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          pattern: nutty-*
+          merge-multiple: true
+      # The release notes are this version's CHANGELOG.md section: GitHub's
+      # generated notes only list pull requests, and miss direct pushes.
+      - name: Take the release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v header="## [$version]" '
+            index($0, header) == 1 { found = 1; next }
+            found && /^## \[/      { exit }
+            found                  { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > RELEASE_NOTES.md
+          if [ -s RELEASE_NOTES.md ]; then
+            cat RELEASE_NOTES.md
+          else
+            echo "::warning::no '## [$version]' section in CHANGELOG.md"
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: true

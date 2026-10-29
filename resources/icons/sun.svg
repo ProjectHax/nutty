@@ -1,0 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 ProjectHax LLC -->
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="3.8"/><path d="M18.60 12.00L20.90 12.00M16.67 16.67L18.29 18.29M12.00 18.60L12.00 20.90M7.33 16.67L5.71 18.29M5.40 12.00L3.10 12.00M7.33 7.33L5.71 5.71M12.00 5.40L12.00 3.10M16.67 7.33L18.29 5.71"/>
+</svg>

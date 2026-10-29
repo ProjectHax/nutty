@@ -1,0 +1,174 @@
+{
+  "comment": "Maps EcoFlow IoT Open Platform quota keys (GET /iot-open/sign/device/quota/all) onto nutty's normalized fields. The first family whose 'match' keys appear in a device's quota wins; within a field the first candidate key present wins. A candidate is a key name or {\"key\": ..., \"scale\": n} (the value is multiplied by scale). Remaining times are minutes; values < 0 or > 5000 mean 'not available'. A family may add 'details' (power by port, battery packs under a key prefix, lifetime Wh counters and temperatures) and 'controls': the settings nutty can change, for serials starting with one of 'serials'. Each control reads its current value from 'state' and is set with PUT /iot-open/sign/device/quota {sn, params}, where in 'params' \"$value\" is the new value and \"$<key>\" the current reading of <key>. Toggles send 'on' / 'off' (default 1 / 0); 'limits' lower 'max' while a reading is below a value.",
+  "version": 1,
+  "families": [
+    {
+      "id": "proto",
+      "label": "DELTA Pro 3 / DELTA 3 / RIVER 3",
+      "match": ["cmsBattSoc", "powInSumW", "powOutSumW"],
+      "fields": {
+        "charge": ["cmsBattSoc", "bmsBattSoc"],
+        "dischargeMinutes": ["cmsDsgRemTime", "bmsDsgRemTime"],
+        "chargeMinutes": ["cmsChgRemTime", "bmsChgRemTime"],
+        "wattsIn": ["powInSumW"],
+        "wattsOut": ["powOutSumW"],
+        "acInWatts": ["powGetAcIn"],
+        "acInFrequency": ["plugInInfoAcInFeq"],
+        "temperature": ["bmsMaxCellTemp"],
+        "minDischargeSoc": ["cmsMinDsgSoc", "cfgMinDsgSoc"]
+      }
+    },
+    {
+      "id": "delta2",
+      "label": "DELTA 2 / DELTA 2 Max / RIVER 2",
+      "match": ["bms_emsStatus.lcdShowSoc", "bms_bmsStatus.soc", "bms_emsStatus.dsgRemainTime"],
+      "fields": {
+        "charge": ["bms_emsStatus.lcdShowSoc", "pd.soc", "bms_bmsStatus.soc"],
+        "dischargeMinutes": ["bms_emsStatus.dsgRemainTime"],
+        "chargeMinutes": ["bms_emsStatus.chgRemainTime"],
+        "remainMinutes": ["pd.remainTime"],
+        "wattsIn": ["pd.wattsInSum"],
+        "wattsOut": ["pd.wattsOutSum"],
+        "acInWatts": ["inv.inputWatts"],
+        "acInVoltage": [{ "key": "inv.acInVol", "scale": 0.001 }],
+        "acOutVoltage": [{ "key": "inv.invOutVol", "scale": 0.001 }],
+        "temperature": ["bms_bmsStatus.temp"],
+        "minDischargeSoc": ["bms_emsStatus.minDsgSoc"]
+      }
+    },
+    {
+      "id": "deltapro",
+      "label": "DELTA Pro / DELTA Max",
+      "match": ["ems.lcdShowSoc", "bmsMaster.soc", "ems.dsgRemainTime"],
+      "fields": {
+        "charge": ["ems.lcdShowSoc", "pd.soc", "bmsMaster.soc"],
+        "dischargeMinutes": ["ems.dsgRemainTime"],
+        "chargeMinutes": ["ems.chgRemainTime"],
+        "remainMinutes": ["pd.remainTime"],
+        "wattsIn": ["pd.wattsInSum"],
+        "wattsOut": ["pd.wattsOutSum"],
+        "acInWatts": ["inv.inputWatts"],
+        "acInVoltage": [{ "key": "inv.acInVol", "scale": 0.001 }],
+        "acOutVoltage": [{ "key": "inv.invOutVol", "scale": 0.001 }],
+        "temperature": ["bmsMaster.temp"],
+        "minDischargeSoc": ["ems.minDsgSoc"],
+        "solarWatts": ["mppt.inWatts"]
+      },
+      "details": {
+        "inputs": [
+          { "id": "ac", "keys": ["inv.inputWatts"] },
+          { "id": "solar", "keys": ["mppt.inWatts"] }
+        ],
+        "outputs": [
+          { "id": "ac", "keys": ["inv.outputWatts"] },
+          { "id": "usb", "keys": ["pd.usb1Watts", "pd.usb2Watts", "pd.qcUsb1Watts", "pd.qcUsb2Watts"] },
+          { "id": "usbc", "keys": ["pd.typec1Watts", "pd.typec2Watts"] },
+          { "id": "car", "keys": ["mppt.carOutWatts"] },
+          { "id": "wireless", "keys": ["pd.wirelessWatts"] }
+        ],
+        "packs": [
+          { "id": "main", "prefix": "bmsMaster." },
+          { "id": "extra1", "prefix": "bmsSlave1.", "online": "ems.bms1Online" },
+          { "id": "extra2", "prefix": "bmsSlave2.", "online": "ems.bms2Online" }
+        ],
+        "energy": [
+          { "id": "acIn", "key": "pd.chgPowerAc" },
+          { "id": "solarIn", "key": "pd.chgSunPower" },
+          { "id": "dcIn", "key": "pd.chgPowerDc" },
+          { "id": "acOut", "key": "pd.dsgPowerAc" },
+          { "id": "dcOut", "key": "pd.dsgPowerDc" }
+        ],
+        "temperatures": [
+          { "id": "inverter", "key": "inv.outTemp" },
+          { "id": "solar", "key": "mppt.mpptTemp" },
+          { "id": "dcInput", "key": "inv.dcInTemp" }
+        ]
+      },
+      "controls": {
+        "serials": ["DCAB"],
+        "items": [
+          { "id": "acOutput", "kind": "Toggle", "state": "inv.cfgAcEnabled", "ask": "Always",
+            "params": { "cmdSet": 32, "id": 66, "enabled": "$value", "xboost": "$inv.cfgAcXboost" } },
+          { "id": "xBoost", "kind": "Toggle", "state": "inv.cfgAcXboost", "ask": "Always",
+            "params": { "cmdSet": 32, "id": 66, "enabled": "$inv.cfgAcEnabled", "xboost": "$value" } },
+          { "id": "acTimeout", "kind": "Choice", "state": "inv.cfgStandbyMin", "unit": "min", "ask": "UnlessZero",
+            "choices": [0, 30, 60, 120, 240, 360, 720, 1440],
+            "params": { "cmdSet": 32, "id": 153, "standByMins": "$value" } },
+          { "id": "carOutput", "kind": "Toggle", "state": "mppt.carState", "ask": "WhenOff",
+            "params": { "cmdSet": 32, "id": 81, "enabled": "$value" } },
+          { "id": "acChargeSpeed", "kind": "Level", "state": "inv.cfgSlowChgWatts", "unit": "W", "ask": "Always",
+            "min": 200, "max": 2900, "step": 100,
+            "limits": [{ "key": "inv.cfgAcOutVoltage", "below": 150000, "max": 1800 }],
+            "params": { "cmdSet": 32, "id": 69, "slowChgPower": "$value" } },
+          { "id": "chargeLimit", "kind": "Level", "state": "ems.maxChargeSoc", "unit": "%",
+            "min": 50, "max": 100, "step": 1,
+            "params": { "cmdSet": 32, "id": 49, "maxChgSoc": "$value" } },
+          { "id": "dischargeLimit", "kind": "Level", "state": "ems.minDsgSoc", "unit": "%",
+            "min": 0, "max": 30, "step": 1,
+            "params": { "cmdSet": 32, "id": 51, "minDsgSoc": "$value" } },
+          { "id": "carInputCurrent", "kind": "Choice", "state": "mppt.cfgDcChgCurrent", "unit": "mA",
+            "choices": [4000, 6000, 8000],
+            "params": { "cmdSet": 32, "id": 71, "currMa": "$value" } },
+          { "id": "backupReserve", "kind": "Toggle", "state": "pd.watthisconfig",
+            "params": { "cmdSet": 32, "id": 94, "isConfig": "$value", "bpPowerSoc": "$pd.bppowerSoc",
+                        "minDsgSoc": 0, "maxChgSoc": 0 } },
+          { "id": "backupReserveLevel", "kind": "Level", "state": "pd.bppowerSoc", "unit": "%",
+            "min": 5, "max": 100, "step": 1, "dependsOn": "backupReserve",
+            "params": { "cmdSet": 32, "id": 94, "isConfig": 1, "bpPowerSoc": "$value",
+                        "minDsgSoc": 0, "maxChgSoc": 0 } },
+          { "id": "beeper", "kind": "Toggle", "state": "pd.beepState", "on": 0, "off": 1,
+            "params": { "cmdSet": 32, "id": 38, "enabled": "$value" } },
+          { "id": "screenTimeout", "kind": "Choice", "state": "pd.lcdOffSec", "unit": "s",
+            "choices": [0, 10, 30, 60, 300, 1800],
+            "params": { "cmdSet": 32, "id": 39, "lcdTime": "$value" } },
+          { "id": "unitTimeout", "kind": "Choice", "state": "pd.standByMode", "unit": "min", "ask": "UnlessZero",
+            "choices": [0, 30, 60, 120, 360, 720],
+            "params": { "cmdSet": 32, "id": 33, "standByMode": "$value" } },
+          { "id": "generatorStart", "kind": "Level", "state": "ems.minOpenOilEbSoc", "unit": "%",
+            "min": 0, "max": 30, "step": 1,
+            "params": { "cmdSet": 32, "id": 52, "openOilSoc": "$value" } },
+          { "id": "generatorStop", "kind": "Level", "state": "ems.maxCloseOilEbSoc", "unit": "%",
+            "min": 50, "max": 100, "step": 1,
+            "params": { "cmdSet": 32, "id": 53, "closeOilSoc": "$value" } }
+        ]
+      }
+    },
+    {
+      "id": "powerstream",
+      "label": "PowerStream",
+      "limited": true,
+      "match": ["20_1.batSoc", "20_1.invOutputWatts", "20_1.pv1InputWatts"],
+      "fields": {
+        "charge": ["20_1.batSoc"],
+        "dischargeMinutes": ["20_1.dsgRemainTime"],
+        "chargeMinutes": ["20_1.chgRemainTime"],
+        "wattsIn": [{ "key": "20_1.pv1InputWatts", "scale": 0.1 }],
+        "wattsOut": [{ "key": "20_1.invOutputWatts", "scale": 0.1 }]
+      }
+    },
+    {
+      "id": "smartplug",
+      "label": "Smart Plug",
+      "battery": false,
+      "match": ["2_1.watts"],
+      "fields": {
+        "wattsOut": [{ "key": "2_1.watts", "scale": 0.1 }],
+        "acOutVoltage": ["2_1.volt"],
+        "temperature": ["2_1.temp"]
+      }
+    },
+    {
+      "id": "generic",
+      "label": "EcoFlow",
+      "match": [],
+      "fields": {
+        "charge": ["soc", "cmsBattSoc", "bmsBattSoc", "pd.soc", "f32ShowSoc", "batSoc"],
+        "dischargeMinutes": ["dsgRemainTime", "cmsDsgRemTime", "bmsDsgRemTime"],
+        "chargeMinutes": ["chgRemainTime", "cmsChgRemTime", "bmsChgRemTime"],
+        "remainMinutes": ["remainTime", "pd.remainTime"],
+        "wattsIn": ["powInSumW", "pd.wattsInSum", "inputWatts"],
+        "wattsOut": ["powOutSumW", "pd.wattsOutSum", "outputWatts"]
+      }
+    }
+  ]
+}

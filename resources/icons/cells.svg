@@ -1,0 +1,5 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 ProjectHax LLC -->
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<rect x="3.5" y="6" width="4" height="13" rx="1.2"/><rect x="10" y="6" width="4" height="13" rx="1.2"/><rect x="16.5" y="6" width="4" height="13" rx="1.2"/><path d="M5.5 4v2M12 4v2M18.5 4v2"/>
+</svg>

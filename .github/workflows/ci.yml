@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 ProjectHax LLC
+
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Bundled builds track the current Qt; distro builds use the system Qt.
+  QT_VERSION: "6.10.*"
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Formatting. The version is pinned to match the one the code is formatted
+  # with, since clang-format output shifts between releases.
+  # ----------------------------------------------------------------------------
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: clang-format
+        run: |
+          pipx run clang-format==21.1.8 --version
+          git ls-files '*.cpp' '*.h' | xargs pipx run clang-format==21.1.8 --dry-run --Werror
+
+  # ----------------------------------------------------------------------------
+  # Linux against Ubuntu 24.04's own Qt 6.4: the floor every .deb/.rpm is built
+  # against, so anything newer than Qt 6.4 fails here first.
+  # ----------------------------------------------------------------------------
+  linux-system-qt:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++-14 cmake ninja-build pkg-config \
+            qt6-base-dev qt6-base-dev-tools qt6-declarative-dev qt6-declarative-dev-tools \
+            qt6-shadertools-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
+            libqt6sql6-sqlite qt6-qpa-plugins libgl-dev libvulkan-dev \
+            qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-templates \
+            qml6-module-qtquick-layouts qml6-module-qtquick-shapes qml6-module-qtquick-window \
+            qml6-module-qtqml-workerscript qml6-module-qtqml-models qml6-module-qttest
+      - name: Configure
+        run: cmake --preset ci -DCMAKE_CXX_COMPILER=g++-14
+      - name: Build
+        run: cmake --build --preset ci
+      - name: Test
+        run: ctest --preset ci
+
+  # ----------------------------------------------------------------------------
+  # Linux against the current Qt (what the AppImage and Flatpak ship), with
+  # qmllint as an advisory report.
+  # ----------------------------------------------------------------------------
+  linux-current-qt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++-14 ninja-build libgl-dev libvulkan-dev libxkbcommon-dev libfontconfig1-dev
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtshadertools
+          cache: true
+      - name: Configure
+        run: cmake --preset ci -DCMAKE_CXX_COMPILER=g++-14
+      - name: Build
+        run: cmake --build --preset ci
+      - name: Test
+        run: ctest --preset ci
+      - name: qmllint (advisory)
+        continue-on-error: true
+        run: cmake --build --preset ci --target all_qmllint
+
+  # ----------------------------------------------------------------------------
+  # macOS: one universal (arm64 + x86_64) build, as shipped.
+  # ----------------------------------------------------------------------------
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Ensure Ninja
+        run: command -v ninja || brew install ninja
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtshadertools
+          cache: true
+      - name: Configure
+        run: >
+          cmake --preset ci
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+      - name: Build
+        run: cmake --build --preset ci
+      - name: Test
+        run: ctest --preset ci
+
+  # ----------------------------------------------------------------------------
+  # Windows: x64 and native arm64.
+  # ----------------------------------------------------------------------------
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            msvc: amd64
+            host: windows
+            arch: win64_msvc2022_64
+          - runner: windows-11-arm
+            msvc: arm64
+            host: windows_arm64
+            arch: win64_msvc2022_arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc }}
+      - name: Ensure Ninja
+        shell: pwsh
+        run: if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) { choco install ninja --no-progress -y }
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.host }}
+          arch: ${{ matrix.arch }}
+          modules: qtshadertools
+          cache: true
+      - name: Configure
+        run: cmake --preset ci
+      - name: Build
+        run: cmake --build --preset ci
+      - name: Test
+        run: ctest --preset ci

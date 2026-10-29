@@ -1,0 +1,29 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 ProjectHax LLC -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs>
+<linearGradient id="lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4049"/><stop offset="1" stop-color="#262a30"/></linearGradient>
+<linearGradient id="screen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b8def"/><stop offset="0.55" stop-color="#7a5cf0"/><stop offset="1" stop-color="#c0569b"/></linearGradient>
+<linearGradient id="deck" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e4e7eb"/><stop offset="1" stop-color="#b9c0c8"/></linearGradient>
+<linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7aeb7"/><stop offset="1" stop-color="#8a929c"/></linearGradient>
+<radialGradient id="glow" cx="0.3" cy="0.25" r="0.7"><stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+<radialGradient id="floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#000000" stop-opacity="0.3"/><stop offset="0.55" stop-color="#000000" stop-opacity="0.12"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="128" cy="199" rx="122" ry="9" fill="url(#floor)"/>
+<rect x="44" y="48" width="168" height="112" rx="9" fill="url(#lid)"/>
+<rect x="44.5" y="48.5" width="167" height="111" rx="8.5" fill="none" stroke="#ffffff" stroke-opacity="0.12"/>
+<rect x="52" y="56" width="152" height="96" rx="4" fill="url(#screen)"/>
+<rect x="52" y="56" width="152" height="96" rx="4" fill="url(#glow)"/>
+<path d="M52 140 Q 110 112 204 128 V148 a4 4 0 0 1 -4 4 H56 a4 4 0 0 1 -4 -4z" fill="#ffffff" fill-opacity="0.10"/>
+<rect x="104" y="90" width="44" height="22" rx="6" fill="none" stroke="#ffffff" stroke-width="3"/>
+<rect x="150" y="97" width="4" height="8" rx="2" fill="#ffffff"/>
+<rect x="109" y="95" width="26" height="12" rx="3" fill="#ffffff"/>
+<path d="M40 162 H216 L240 186 a4 4 0 0 1 -3 6 H19 a4 4 0 0 1 -3 -6z" fill="url(#deck)"/>
+<path d="M17 192 H239 a4 4 0 0 1 -3 6 H20 a4 4 0 0 1 -3 -6z" fill="url(#front)"/>
+<path d="M110 192 h36 a4 4 0 0 1 -4 3 h-28 a4 4 0 0 1 -4 -3z" fill="#7d858f"/>
+<path d="M48 166 H208 l2 4 H46z" fill="#2a2f36" fill-opacity="0.18"/>
+<path d="M42 172 H214 l2 4 H40z" fill="#2a2f36" fill-opacity="0.18"/>
+<path d="M36 178 H220 l2 4 H34z" fill="#2a2f36" fill-opacity="0.18"/>
+<path d="M108 185 h40 l2 4 h-44z" fill="#000000" fill-opacity="0.10"/>
+<rect x="40" y="160" width="176" height="3" rx="1.5" fill="#6c737d"/>
+</svg>

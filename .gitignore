@@ -1,0 +1,47 @@
+.muxel/
+
+# build output
+/build/
+/build-*/
+/out/
+/dist/
+/AppDir/
+/compile_commands.json
+/Testing/
+CMakeUserPresets.json
+*.AppImage
+*.flatpak
+/.flatpak-builder/
+/repo/
+*.dmg
+*.deb
+*.rpm
+/resources/appicon/nutty.icns
+
+# editor / IDE / tooling
+/.cache/
+/.vscode/
+/.idea/
+*.user
+*.swp
+*~
+.DS_Store
+/.claude/
+.qmlls.ini
+
+# secrets / credentials: never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.p8
+*.pkcs12
+*.keystore
+*.jks
+*.token
+
+# Python bytecode (scripts/)
+__pycache__/

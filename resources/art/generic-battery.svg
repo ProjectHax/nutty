@@ -1,0 +1,21 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 ProjectHax LLC -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs>
+<linearGradient id="shell" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a2e35"/><stop offset="0.22" stop-color="#4a515c"/><stop offset="0.5" stop-color="#353a42"/><stop offset="1" stop-color="#1d2025"/></linearGradient>
+<linearGradient id="charge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1f9e63"/><stop offset="0.25" stop-color="#4fe3a0"/><stop offset="0.55" stop-color="#2fc282"/><stop offset="1" stop-color="#16794b"/></linearGradient>
+<linearGradient id="cap" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7d8592"/><stop offset="0.4" stop-color="#b9c0ca"/><stop offset="1" stop-color="#5d6570"/></linearGradient>
+<linearGradient id="gloss" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="0.0"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0.35"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.0"/></linearGradient>
+<radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#3dd68c" stop-opacity="0.35"/><stop offset="1" stop-color="#3dd68c" stop-opacity="0"/></radialGradient>
+<radialGradient id="floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#000000" stop-opacity="0.3"/><stop offset="0.55" stop-color="#000000" stop-opacity="0.12"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="128" cy="229" rx="62" ry="9" fill="url(#floor)"/>
+<circle cx="128" cy="150" r="104" fill="url(#glow)"/>
+<rect x="108" y="34" width="40" height="22" rx="6" fill="url(#cap)"/>
+<rect x="82" y="50" width="92" height="176" rx="22" fill="url(#shell)"/>
+<path d="M82 119.36 C 106 107.36, 134 127.36, 174 113.36 V204 a22 22 0 0 1 -22 22 H104 a22 22 0 0 1 -22 -22z" fill="url(#charge)"/>
+<path d="M82 119.36 C 106 107.36, 134 127.36, 174 113.36" fill="none" stroke="#b6ffd9" stroke-opacity="0.7" stroke-width="2"/>
+<path d="M136 120 108 162 h18 l-8 36 30 -46 h-18z" fill="#ffffff" fill-opacity="0.95"/>
+<rect x="96" y="60" width="14" height="156" rx="7" fill="url(#gloss)"/>
+<rect x="82.5" y="50.5" width="91" height="175" rx="21.5" fill="none" stroke="#ffffff" stroke-opacity="0.14"/>
+</svg>

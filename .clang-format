@@ -1,0 +1,36 @@
+---
+BasedOnStyle: WebKit
+Language: Cpp
+Standard: Latest
+ColumnLimit: 110
+IndentWidth: 4
+AccessModifierOffset: -4
+PointerAlignment: Left
+NamespaceIndentation: None
+FixNamespaceComments: true
+SpacesBeforeTrailingComments: 2
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: false
+  AfterEnum: false
+  AfterControlStatement: Never
+  BeforeElse: false
+  BeforeLambdaBody: false
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 4
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 1
+  - Regex: '^<Q'
+    Priority: 2
+  - Regex: '^<'
+    Priority: 3
+SortIncludes: CaseSensitive
+...

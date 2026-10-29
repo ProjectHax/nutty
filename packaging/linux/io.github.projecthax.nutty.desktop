@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=nutty
+GenericName=UPS Monitor
+Comment=Monitor UPS units, power stations and batteries
+Exec=nutty
+Icon=io.github.projecthax.nutty
+Terminal=false
+Categories=System;Monitor;
+Keywords=ups;nut;battery;power;ecoflow;apcupsd;shutdown;outage;
+StartupNotify=true
+StartupWMClass=nutty
+SingleMainWindow=true
