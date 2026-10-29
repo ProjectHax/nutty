@@ -207,7 +207,11 @@ TestCase {
         const first = button(sheet, "confirmFirst")
         const spot = first.mapToItem(sheet.contentItem, first.width / 2, first.height / 2)
         mouseClick(sheet.contentItem, spot.x, spot.y)
-        wait(80)  // a quick double click, a few frames apart
+        // "Cancel" moves under the pointer when the footer is laid out again,
+        // on the next frame; a slow runner can take longer than a double
+        // click to draw it.
+        const cancel = button(sheet, "confirmCancel")
+        tryVerify(() => cancel.contains(cancel.mapFromItem(sheet.contentItem, spot.x, spot.y)))
         mouseClick(sheet.contentItem, spot.x, spot.y)
         tryVerify(() => !sheet.visible)
         compare(Probe.applied().length, sent)
