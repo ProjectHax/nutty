@@ -45,9 +45,17 @@ TrayController::TrayController(AppContext* context, QObject* parent)
     m_menu->addSeparator();
     m_open = m_menu->addAction(QString());
     connect(m_open, &QAction::triggered, this, &TrayController::openRequested);
+    m_menu->addSeparator();
     m_quit = m_menu->addAction(QString());
-    m_quit->setMenuRole(QAction::QuitRole);
+    m_quit->setMenuRole(QAction::NoRole);
     connect(m_quit, &QAction::triggered, this, &TrayController::quitRequested);
+#ifdef Q_OS_MACOS
+    // A QuitRole action leaves this menu for the app menu (Quit nutty, ⌘Q),
+    // which only shows while the window is open, so that takes a second one.
+    m_appQuit = m_menu->addAction(QString());
+    m_appQuit->setMenuRole(QAction::QuitRole);
+    connect(m_appQuit, &QAction::triggered, this, &TrayController::quitRequested);
+#endif
     connect(m_menu.get(), &QMenu::aboutToShow, this, [this] {
         update();
         m_ticker.start();
@@ -121,6 +129,8 @@ void TrayController::retranslate()
     m_open->setText(tr("Open nutty"));
     m_cancel->setText(tr("Cancel"));
     m_quit->setText(tr("Quit"));
+    if (m_appQuit)
+        m_appQuit->setText(tr("Quit"));
     update();
 }
 

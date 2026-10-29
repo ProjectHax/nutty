@@ -58,6 +58,7 @@ private:
     QAction* m_cancel = nullptr;
     QAction* m_snooze = nullptr;
     QAction* m_quit = nullptr;
+    QAction* m_appQuit = nullptr;  // macOS: the app menu's Quit
     TrayIconState m_state;
     bool m_iconSet = false;
     QTimer m_debounce;
