@@ -17,7 +17,10 @@ if(APPLE)
     set(NUTTY_ICNS "${NUTTY_APPICON_DIR}/nutty.icns")
     if(EXISTS "${NUTTY_ICNS}")
         target_sources(nutty PRIVATE "${NUTTY_ICNS}")
-        set_source_files_properties("${NUTTY_ICNS}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        # Source properties are per directory: set it where nutty is defined
+        # (src/app), or the .icns never gets copied into the bundle.
+        set_source_files_properties("${NUTTY_ICNS}" TARGET_DIRECTORY nutty
+            PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     endif()
     set_target_properties(nutty PROPERTIES
         MACOSX_BUNDLE TRUE

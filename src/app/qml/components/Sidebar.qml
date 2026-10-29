@@ -10,6 +10,8 @@ import Nutty
 //   items:       [{ key, text, icon, badge? }, ...] shown at the top
 //   footerItems: the same, pinned to the bottom (About, ...)
 //   currentKey:  the selected page; activated(key) asks to change it
+//   topInset:    room kept clear above the header for native window buttons,
+//   insetWidth:  and how wide they are; the rail is never narrower
 //
 // In a frameless window the header doubles as a drag area, and
 // `cornerRadius` rounds the outer corners to match the window.
@@ -25,11 +27,13 @@ Item {
     property real cornerRadius: 0
     property Window window: null
     property real headerHeight: 52
+    property real topInset: 0
+    property real insetWidth: 0
     property color color: Theme.surface
 
     signal activated(string key)
 
-    implicitWidth: compact ? 64 : 224
+    implicitWidth: Math.max(compact ? 64 : 224, insetWidth)
     Behavior on implicitWidth {
         enabled: Theme.animationsEnabled
         NumberAnimation { duration: Theme.durationNormal; easing.type: Easing.OutCubic }
@@ -58,7 +62,8 @@ Item {
     Item {
         id: header
         width: parent.width
-        height: root.headerHeight
+        // The inset strip drags the window too, so it's part of the header.
+        height: root.topInset + root.headerHeight
 
         DragHandler {
             target: null
@@ -82,6 +87,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: root.compact ? (parent.width - logo.width) / 2 : 16
             anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: root.topInset / 2
             spacing: 10
 
             Image {

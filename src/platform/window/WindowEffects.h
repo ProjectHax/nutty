@@ -25,6 +25,15 @@ namespace WindowEffects {
 // whether to clear its background. Safe to call again when options change.
 bool apply(QWindow* window, const WindowEffectOptions& options);
 
+// A native title bar drawn over the top of the content (macOS), which the
+// content keeps clear for the window buttons in it.
+struct TitleBarOverlay {
+    int height = 0;  // 0 where the title bar sits above the content
+    int buttonsWidth = 0;  // from the window's edge, with as much room past them
+    bool buttonsOnRight = false;  // right-to-left systems put them there
+};
+TitleBarOverlay titleBarOverlay(QWindow* window);
+
 }  // namespace WindowEffects
 
 }  // namespace nutty

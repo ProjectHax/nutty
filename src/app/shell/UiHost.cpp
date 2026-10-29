@@ -96,6 +96,10 @@ void UiHost::applyEffects(QQuickWindow* window)
     options.dark = ThemeBridge::instance()->dark();
     const bool backdrop = WindowEffects::apply(window, options);
     window->setProperty("backdrop", backdrop);
+    const WindowEffects::TitleBarOverlay overlay = WindowEffects::titleBarOverlay(window);
+    window->setProperty("titleBarInset", overlay.height);
+    window->setProperty("windowButtonsWidth", overlay.buttonsWidth);
+    window->setProperty("windowButtonsOnRight", overlay.buttonsOnRight);
 }
 
 void UiHost::bringToFront(QQuickWindow* window)

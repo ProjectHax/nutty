@@ -5,6 +5,8 @@
 
 #include <QWindow>
 
+#include <cmath>
+
 #import <AppKit/AppKit.h>
 
 namespace nutty::WindowEffects {
@@ -63,6 +65,34 @@ bool apply(QWindow* window, const WindowEffectOptions& options)
     nsWindow.opaque = NO;
     nsWindow.backgroundColor = [NSColor clearColor];
     return true;
+}
+
+TitleBarOverlay titleBarOverlay(QWindow* window)
+{
+    if (!window)
+        return {};
+    NSView* qtView = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    NSWindow* nsWindow = qtView.window;
+    if (!nsWindow || !(nsWindow.styleMask & NSWindowStyleMaskFullSizeContentView))
+        return {};
+    TitleBarOverlay overlay;
+    // The layout rect is the part of the window the title bar doesn't cover.
+    overlay.height
+        = static_cast<int>(std::ceil(NSHeight(nsWindow.frame) - NSHeight(nsWindow.contentLayoutRect)));
+
+    NSRect buttons = NSZeroRect;
+    for (NSWindowButton kind : { NSWindowCloseButton, NSWindowMiniaturizeButton, NSWindowZoomButton }) {
+        NSButton* button = [nsWindow standardWindowButton:kind];
+        if (button && !button.hidden)
+            buttons = NSUnionRect(buttons, [button convertRect:button.bounds toView:nil]);
+    }
+    if (NSIsEmptyRect(buttons))
+        return overlay;
+    overlay.buttonsOnRight = NSMidX(buttons) > NSWidth(nsWindow.frame) / 2;
+    const CGFloat margin
+        = overlay.buttonsOnRight ? NSWidth(nsWindow.frame) - NSMaxX(buttons) : NSMinX(buttons);
+    overlay.buttonsWidth = static_cast<int>(std::ceil(NSWidth(buttons) + 2 * margin));
+    return overlay;
 }
 
 }  // namespace nutty::WindowEffects

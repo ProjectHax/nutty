@@ -5,6 +5,11 @@ All notable changes to nutty are documented here. This project adheres to
 
 ## [Unreleased]
 
+### Fixed
+- **macOS**: the app shows its icon in Finder and the Dock; the bundle left
+  out `nutty.icns`.
+- **macOS**: the window buttons no longer cover the sidebar's logo and title.
+
 ## [0.1.0] - 2026-10-29
 
 ### Added

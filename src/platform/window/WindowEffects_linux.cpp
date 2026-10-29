@@ -12,4 +12,9 @@ bool apply(QWindow*, const WindowEffectOptions&)
     return false;
 }
 
+TitleBarOverlay titleBarOverlay(QWindow*)
+{
+    return {};
+}
+
 }  // namespace nutty::WindowEffects

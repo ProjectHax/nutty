@@ -22,6 +22,13 @@ Window {
     property string deviceId
     // The app sets this when the OS draws a translucent backdrop behind us.
     property bool backdrop: false
+    // And these when a native title bar lies over the content (macOS). Its
+    // window buttons are over the sidebar unless nutty's language runs the
+    // other way from the system's; the page's title bar then makes room.
+    property int titleBarInset: 0
+    property int windowButtonsWidth: 0
+    property bool windowButtonsOnRight: false
+    readonly property bool buttonsOverSidebar: windowButtonsOnRight === (Qt.application.layoutDirection === Qt.RightToLeft)
 
     // Pages seen before and after this one, as { page, id }, for Back and
     // Forward. Only a device page keeps its id: the others take one-off
@@ -157,6 +164,8 @@ Window {
                 window: win
                 compact: win.width < 900
                 cornerRadius: Math.max(0, frame.radius - 1)
+                topInset: win.buttonsOverSidebar ? win.titleBarInset : 0
+                insetWidth: win.buttonsOverSidebar ? win.windowButtonsWidth : 0
                 color: win.backdrop ? "transparent" : Theme.surface
                 subtitle: qsTr("Power monitor")
                 currentKey: win.page === "device" ? "devices" : win.page
@@ -182,6 +191,7 @@ Window {
 
                 ColumnLayout {
                     anchors.fill: parent
+                    anchors.topMargin: win.buttonsOverSidebar ? 0 : win.titleBarInset
                     spacing: 0
 
                     TitleBar {

@@ -51,4 +51,9 @@ bool apply(QWindow* window, const WindowEffectOptions& options)
     return translucent;
 }
 
+TitleBarOverlay titleBarOverlay(QWindow*)
+{
+    return {};
+}
+
 }  // namespace nutty::WindowEffects
