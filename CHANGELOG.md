@@ -5,6 +5,8 @@ All notable changes to nutty are documented here. This project adheres to
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-29
+
 ### Fixed
 - **macOS**: the app shows its icon in Finder and the Dock; the bundle left
   out `nutty.icns`.

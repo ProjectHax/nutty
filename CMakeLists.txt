@@ -10,7 +10,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS version")
 # The project version is the single source of truth: the release workflow, the
 # macOS Info.plist, the Windows resource file and the installer all read it.
 project(nutty
-    VERSION 0.1.0
+    VERSION 0.1.1
     DESCRIPTION "UPS and battery monitor for NUT, EcoFlow and more"
     HOMEPAGE_URL "https://github.com/ProjectHax/nutty"
     LANGUAGES CXX)

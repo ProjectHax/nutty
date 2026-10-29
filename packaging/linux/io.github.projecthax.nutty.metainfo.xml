@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="0.1.1" date="2026-10-29">
+      <description>
+        <p>macOS fixes: the app shows its icon, the window buttons no longer
+        cover the sidebar, and the menu bar icon's menu has Quit.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-10-29">
       <description>
         <p>First release.</p>
