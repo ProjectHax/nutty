@@ -14,5 +14,5 @@ target_sources(tst_qml PRIVATE ${NUTTY_QML_TESTS})
 
 add_test(NAME tst_qml COMMAND tst_qml -input "${CMAKE_CURRENT_SOURCE_DIR}")
 set_tests_properties(tst_qml PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_LOGGING_RULES=*.debug=false"
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_LOGGING_RULES=*.debug=false;QT_FORCE_STDERR_LOGGING=1"
     TIMEOUT 180)

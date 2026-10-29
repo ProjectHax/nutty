@@ -14,8 +14,10 @@ function(nutty_add_tests area)
         target_include_directories(${name} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
         nutty_set_warnings(${name})
         add_test(NAME ${name} COMMAND ${name})
+        # Without a console, Windows sends Qt's messages to the debugger, so a
+        # failing test would print nothing; QT_FORCE_STDERR_LOGGING keeps them.
         set_tests_properties(${name} PROPERTIES
-            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_LOGGING_RULES=*.debug=false"
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_LOGGING_RULES=*.debug=false;QT_FORCE_STDERR_LOGGING=1"
             TIMEOUT 120)
     endforeach()
 endfunction()

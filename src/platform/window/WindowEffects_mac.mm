@@ -30,7 +30,7 @@ bool apply(QWindow* window, const WindowEffectOptions& options)
 {
     if (!window)
         return false;
-    NSView* qtView = reinterpret_cast<NSView*>(window->winId());
+    NSView* qtView = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
     NSWindow* nsWindow = qtView.window;
     if (!nsWindow)
         return false;
