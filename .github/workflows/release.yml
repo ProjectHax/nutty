@@ -280,6 +280,9 @@ jobs:
         run: |
           set -eux
           app=build/src/app/nutty.app
+          # nutty only uses SQLite; the other drivers link client libraries
+          # the runner lacks (PostgreSQL's libpq), and would ship unused.
+          find "$QT_ROOT_DIR/plugins/sqldrivers" -name '*.dylib' ! -name libqsqlite.dylib -delete
           macdeployqt "$app" -qmldir=src/app/qml -verbose=1
           lipo -info "$app/Contents/MacOS/nutty"
           rm -rf nutty.app && ditto "$app" nutty.app
@@ -355,7 +358,11 @@ jobs:
           cmake --build build
           cmake --install build --prefix dist
       - name: Deploy Qt
-        run: windeployqt --release --qmldir src/app/qml --no-compiler-runtime --no-opengl-sw dist/nutty.exe
+        run: |
+          # nutty only uses SQLite; the other drivers would ship unused.
+          Get-ChildItem "$env:QT_ROOT_DIR/plugins/sqldrivers" -Filter *.dll |
+            Where-Object Name -ne qsqlite.dll | Remove-Item
+          windeployqt --release --qmldir src/app/qml --no-compiler-runtime --no-opengl-sw dist/nutty.exe
       # jsign is Java; not every runner image ships a JRE (windows-11-arm).
       - uses: actions/setup-java@v4
         if: env.SIGN == 'true'

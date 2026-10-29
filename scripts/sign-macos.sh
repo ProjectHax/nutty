@@ -104,11 +104,23 @@ notarize() {
     --wait
 }
 
+# Fetch the ticket from Apple's ticket service and attach it. It drops the odd
+# connection ("The network connection was lost", exit 68), so try a few times.
+staple() {
+  local i
+  for i in 1 2 3 4 5; do
+    xcrun stapler staple "$1" && return 0
+    echo "==> Stapling failed (try $i of 5), waiting before the next..."
+    sleep $((i * 10))
+  done
+  return 1
+}
+
 if [ -n "$notarize_enabled" ]; then
   echo "==> Notarizing $(basename "$app")..."
   ditto -c -k --keepParent "$app" "$tmp/notarize.zip"
   notarize "$tmp/notarize.zip"
-  xcrun stapler staple "$app"
+  staple "$app"
 fi
 
 # DMG: the app next to an /Applications symlink, for the familiar drag-to-install
@@ -127,7 +139,7 @@ if [ -n "$notarize_enabled" ]; then
   echo "==> Signing + notarizing the DMG..."
   codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$out.dmg"
   notarize "$out.dmg"
-  xcrun stapler staple "$out.dmg"
+  staple "$out.dmg"
   rm -f "$tmp/notary.p8"
 fi
 echo "==> Wrote $out.dmg and $out.zip"
