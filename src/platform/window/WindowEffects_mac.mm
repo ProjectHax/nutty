@@ -59,10 +59,7 @@ bool apply(QWindow* window, const WindowEffectOptions& options)
         effect.state = NSVisualEffectStateFollowsWindowActiveState;
         [container addSubview:effect positioned:NSWindowBelow relativeTo:nsWindow.contentView];
     }
-    if (@available(macOS 10.14, *))
-        effect.material = NSVisualEffectMaterialUnderWindowBackground;
-    else
-        effect.material = NSVisualEffectMaterialAppearanceBased;
+    effect.material = NSVisualEffectMaterialUnderWindowBackground;
     nsWindow.opaque = NO;
     nsWindow.backgroundColor = [NSColor clearColor];
     return true;

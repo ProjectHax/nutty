@@ -3,6 +3,10 @@
 
 cmake_minimum_required(VERSION 3.21)
 
+# The oldest macOS nutty supports (Info.plist says the same). It has to be set
+# before project().
+set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS version")
+
 # The project version is the single source of truth: the release workflow, the
 # macOS Info.plist, the Windows resource file and the installer all read it.
 project(nutty

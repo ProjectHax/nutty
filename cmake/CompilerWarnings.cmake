@@ -7,7 +7,9 @@
 # targets, so they are treated as system headers and stay quiet.
 function(nutty_set_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8 /Zc:__cplusplus /Zc:preprocessor)
+        # C4702 (unreachable code) comes from the optimizer, after inlining,
+        # so /external:W0 can't keep it out of Qt's headers.
+        target_compile_options(${target} PRIVATE /W4 /wd4702 /permissive- /utf-8 /Zc:__cplusplus /Zc:preprocessor)
         if(NUTTY_WERROR)
             target_compile_options(${target} PRIVATE /WX)
         endif()

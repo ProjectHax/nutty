@@ -18,11 +18,8 @@
        willPresentNotification:(UNNotification*)notification
          withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler
 {
-    if (@available(macOS 11.0, *))
-        completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList
-                          | UNNotificationPresentationOptionSound);
-    else
-        completionHandler(UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionSound);
+    completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList
+                      | UNNotificationPresentationOptionSound);
 }
 @end
 
