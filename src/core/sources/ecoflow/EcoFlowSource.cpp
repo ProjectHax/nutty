@@ -31,6 +31,9 @@ EcoFlowSource::EcoFlowSource(DeviceConfig config, QObject* parent)
     m_client = new ecoflow::EcoFlowClient(this->config().settings, this->config().secrets, this);
     m_serial = this->config().settings.value(QLatin1StringView(keys::EcoSerial)).toString().trimmed();
     connect(&m_pollTimer, &QTimer::timeout, this, &EcoFlowSource::poll);
+    m_retryTimer.setSingleShot(true);
+    m_retryTimer.setInterval(kRetryDelayMs);
+    connect(&m_retryTimer, &QTimer::timeout, this, &EcoFlowSource::fetch);
     m_confirmTimer.setInterval(kConfirmPollMs);
     connect(&m_confirmTimer, &QTimer::timeout, this, [this] {
         if (m_pending && m_pending->since.elapsed() >= m_confirmTimeoutMs)
@@ -69,7 +72,6 @@ void EcoFlowSource::start()
     }
     setConnectionState(ConnectionState::Connecting);
     m_pollTimer.start(pollIntervalMs());
-    refreshDeviceInfo();
     poll();
 }
 
@@ -77,6 +79,12 @@ void EcoFlowSource::stop()
 {
     m_running = false;
     m_pollTimer.stop();
+    // A retry still waiting to go out is dropped; one already out finishes
+    // on its own.
+    if (m_retryTimer.isActive()) {
+        m_retryTimer.stop();
+        m_inFlight = false;
+    }
     if (m_pending)
         finishPending(m_pending->sent ? ControlResult::Unconfirmed : ControlResult::Failed,
             tr("nutty stopped watching the device before it confirmed the change."));
@@ -88,54 +96,73 @@ void EcoFlowSource::pollNow()
     poll();
 }
 
-void EcoFlowSource::refreshDeviceInfo()
-{
-    if (m_infoInFlight)
-        return;
-    m_infoInFlight = true;
-    m_client->get(kDeviceListPath, {}, [this](const ecoflow::EcoFlowClient::Result& result) {
-        m_infoInFlight = false;
-        m_infoFetchedAt = QDateTime::currentDateTimeUtc();
-        if (!result)
-            return;  // the quota poll reports errors; this is only extra info
-        for (const QJsonValue& v : result->toArray()) {
-            const QJsonObject o = v.toObject();
-            if (o.value(u"sn").toString() != m_serial)
-                continue;
-            m_online = isOnline(o.value(u"online"));
-            m_productName = o.value(u"productName").toString();
-            break;
-        }
-    });
-}
-
 void EcoFlowSource::poll()
 {
     if (!m_running || m_inFlight || !m_client->hasCredentials() || m_serial.isEmpty())
         return;
-    if (!m_infoFetchedAt.isValid()
+    // Once the error is out, one try per poll is enough.
+    m_retriesLeft = connectionState() == ConnectionState::Error ? 0 : kRetries;
+    m_inFlight = true;
+    fetch();
+}
+
+void EcoFlowSource::fetch()
+{
+    // The device is looked up before the first reading, every ten minutes
+    // after, and before every try while EcoFlow says it's offline, so one
+    // such answer doesn't stand for ten minutes.
+    if ((m_online && !*m_online) || !m_infoFetchedAt.isValid()
         || m_infoFetchedAt.secsTo(QDateTime::currentDateTimeUtc()) >= kDeviceInfoRefreshSec)
         refreshDeviceInfo();
+    else
+        fetchQuota();
+}
 
-    m_inFlight = true;
+void EcoFlowSource::refreshDeviceInfo()
+{
+    m_client->get(kDeviceListPath, {}, [this](const ecoflow::EcoFlowClient::Result& result) {
+        if (!m_running) {
+            m_inFlight = false;
+            return;
+        }
+        m_infoFetchedAt = QDateTime::currentDateTimeUtc();
+        // An error here isn't reported: the readout reports its own, and
+        // this is only extra info.
+        if (result) {
+            for (const QJsonValue& v : result->toArray()) {
+                const QJsonObject o = v.toObject();
+                if (o.value(u"sn").toString() != m_serial)
+                    continue;
+                m_online = isOnline(o.value(u"online"));
+                m_productName = o.value(u"productName").toString();
+                break;
+            }
+        }
+        if (m_online && !*m_online)
+            fail(SourceError::Network, tr("The EcoFlow device is offline"));
+        else
+            fetchQuota();
+    });
+}
+
+void EcoFlowSource::fetchQuota()
+{
     m_client->get(kQuotaPath, QJsonObject { { QStringLiteral("sn"), m_serial } },
         [this](const ecoflow::EcoFlowClient::Result& result) {
-            m_inFlight = false;
-            if (!m_running)
-                return;
-            if (!result) {
-                reportError(result.error().kind, result.error().message);
+            if (!m_running) {
+                m_inFlight = false;
                 return;
             }
-            if (m_online && !*m_online) {
-                reportError(SourceError::Network, tr("The EcoFlow device is offline"));
+            if (!result) {
+                fail(result.error().kind, result.error().message);
                 return;
             }
             const QJsonObject quota = result->toObject();
             if (quota.isEmpty()) {
-                reportError(SourceError::Protocol, tr("EcoFlow returned no data for this device"));
+                fail(SourceError::Protocol, tr("EcoFlow returned no data for this device"));
                 return;
             }
+            m_inFlight = false;
             const auto& mapping = ecoflow::EcoFlowMapping::builtin();
             auto mapped = mapping.map(quota);
             mapped.status.serial = m_serial;
@@ -148,6 +175,20 @@ void EcoFlowSource::poll()
             emit controlsChanged();
             checkPending();
         });
+}
+
+void EcoFlowSource::fail(SourceError kind, const QString& message)
+{
+    // EcoFlow's cloud drops the odd request, and now and then calls a device
+    // offline for a moment. Rejected keys and unknown serials won't fix
+    // themselves, though.
+    if (m_retriesLeft > 0 && kind != SourceError::Auth && kind != SourceError::NotFound) {
+        --m_retriesLeft;
+        m_retryTimer.start();
+        return;
+    }
+    m_inFlight = false;
+    reportError(kind, message);
 }
 
 // --- settings ---------------------------------------------------------------------

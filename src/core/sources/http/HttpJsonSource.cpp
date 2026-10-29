@@ -146,6 +146,11 @@ QNetworkRequest HttpJsonSource::makeRequest(const QUrl& url) const
     for (const auto& [name, value] : m_headers)
         request.setRawHeader(name, value);
     request.setTransferTimeout(kTimeoutMs);
+    // Qt keeps an HTTP/2 connection open when a request on it times out, so
+    // a server that stops serving a connection without closing it stalls
+    // every poll after. Over HTTP/1.1 the timed-out request takes its
+    // connection down and the next one starts afresh.
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     return request;
 }
 

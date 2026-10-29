@@ -16,6 +16,8 @@
 #include <QUrlQuery>
 #include <QUuid>
 
+#include <algorithm>
+
 using namespace nutty;
 using namespace nutty::ecoflow;
 
@@ -54,6 +56,14 @@ DeviceConfig ecoConfig(const FakeHttpServer& server)
         { keys::EcoSerial, kSerial } };
     c.secrets = { { keys::EcoAccessKey, kAccessKey }, { keys::EcoSecretKey, kSecretKey } };
     return c;
+}
+
+constexpr auto kQuotaPath = "/iot-open/sign/device/quota/all";
+constexpr auto kDeviceListPath = "/iot-open/sign/device/list";
+
+int requestsTo(const FakeHttpServer& server, const char* path)
+{
+    return int(std::ranges::count_if(server.requests(), [&](const auto& r) { return r.path() == path; }));
 }
 
 // Checks the four signing headers the way EcoFlow's server does.
@@ -685,12 +695,15 @@ private slots:
         QTest::addColumn<QString>("code");
         QTest::addColumn<QString>("message");
         QTest::addColumn<SourceError>("kind");
+        QTest::addColumn<bool>("retried");
 
-        QTest::newRow("http 401") << 401 << "0" << "" << SourceError::Auth;
-        QTest::newRow("bad sign") << 200 << "8521" << "signature is wrong" << SourceError::Auth;
-        QTest::newRow("not bound") << 200 << "6012" << "device not bound to user" << SourceError::NotFound;
-        QTest::newRow("offline") << 200 << "6013" << "device is offline" << SourceError::Network;
-        QTest::newRow("other") << 200 << "1006" << "rate limited" << SourceError::Protocol;
+        QTest::newRow("http 401") << 401 << "0" << "" << SourceError::Auth << false;
+        QTest::newRow("bad sign") << 200 << "8521" << "signature is wrong" << SourceError::Auth << false;
+        QTest::newRow("not bound") << 200 << "6012" << "device not bound to user" << SourceError::NotFound
+                                   << false;
+        QTest::newRow("offline") << 200 << "6013" << "device is offline" << SourceError::Network << true;
+        QTest::newRow("other") << 200 << "1006" << "rate limited" << SourceError::Protocol << true;
+        QTest::newRow("http 502") << 502 << "" << "" << SourceError::Network << true;
     }
 
     void apiErrors()
@@ -699,18 +712,70 @@ private slots:
         QFETCH(QString, code);
         QFETCH(QString, message);
         QFETCH(SourceError, kind);
+        QFETCH(bool, retried);
 
         FakeHttpServer server;
         server.setHandler([&](const FakeHttpServer::Request& r) -> FakeHttpServer::Response {
             if (r.path() == "/iot-open/sign/device/list")
                 return { 200, envelope(QJsonArray {}) };
+            if (code.isEmpty())
+                return { http, {} };
             return { http, envelope(QJsonValue::Undefined, code, message) };
         });
         EcoFlowSource source(ecoConfig(server));
+        source.setRetryDelay(10);
         QSignalSpy errors(&source, &Source::errorOccurred);
         source.start();
         QVERIFY(errors.wait(5000));
+        QCOMPARE(errors.size(), 1);
         QCOMPARE(errors.first().at(0).value<SourceError>(), kind);
+        // Bad keys and unknown serials aren't tried again.
+        QCOMPARE(requestsTo(server, kQuotaPath), retried ? 1 + EcoFlowSource::kRetries : 1);
+    }
+
+    void retriesBeforeReporting()
+    {
+        FakeHttpServer server;
+        int failures = 2;
+        server.setHandler([&](const FakeHttpServer::Request& r) -> FakeHttpServer::Response {
+            if (r.path() == "/iot-open/sign/device/list")
+                return { 200, envelope(QJsonArray { QJsonObject { { "sn", kSerial }, { "online", 1 } } }) };
+            if (failures > 0) {
+                --failures;
+                return { 503, {} };
+            }
+            return { 200, envelope(json(kDelta2OnBattery)) };
+        });
+        EcoFlowSource source(ecoConfig(server));
+        source.setRetryDelay(10);
+        QSignalSpy status(&source, &Source::statusUpdated);
+        QSignalSpy errors(&source, &Source::errorOccurred);
+        source.start();
+        QVERIFY(status.wait(5000));
+        QVERIFY(errors.isEmpty());
+        QCOMPARE(source.connectionState(), ConnectionState::Connected);
+        QCOMPARE(requestsTo(server, kQuotaPath), 3);
+    }
+
+    void oneTryOnceReported()
+    {
+        FakeHttpServer server;
+        server.setHandler([](const FakeHttpServer::Request& r) -> FakeHttpServer::Response {
+            if (r.path() == "/iot-open/sign/device/list")
+                return { 200, envelope(QJsonArray {}) };
+            return { 503, {} };
+        });
+        EcoFlowSource source(ecoConfig(server));
+        source.setRetryDelay(10);
+        QSignalSpy errors(&source, &Source::errorOccurred);
+        source.start();
+        QVERIFY(errors.wait(5000));
+        const int tries = requestsTo(server, kQuotaPath);
+        QCOMPARE(tries, 1 + EcoFlowSource::kRetries);
+
+        source.pollNow();
+        QVERIFY(errors.wait(5000));
+        QCOMPARE(requestsTo(server, kQuotaPath), tries + 1);
     }
 
     void offlineDevice()
@@ -722,10 +787,37 @@ private slots:
             return { 200, envelope(json(kDelta2OnBattery)) };
         });
         EcoFlowSource source(ecoConfig(server));
+        source.setRetryDelay(10);
         QSignalSpy errors(&source, &Source::errorOccurred);
         source.start();
         QVERIFY(errors.wait(5000));
         QCOMPARE(errors.first().at(0).value<SourceError>(), SourceError::Network);
+        // Asked again before every try; the readout isn't fetched at all.
+        QCOMPARE(requestsTo(server, kDeviceListPath), 1 + EcoFlowSource::kRetries);
+        QCOMPARE(requestsTo(server, kQuotaPath), 0);
+    }
+
+    void offlineForAMoment()
+    {
+        FakeHttpServer server;
+        int offline = 1;
+        server.setHandler([&](const FakeHttpServer::Request& r) -> FakeHttpServer::Response {
+            if (r.path() == "/iot-open/sign/device/list") {
+                const int online = offline > 0 ? 0 : 1;
+                offline = std::max(0, offline - 1);
+                return { 200,
+                    envelope(QJsonArray { QJsonObject { { "sn", kSerial }, { "online", online } } }) };
+            }
+            return { 200, envelope(json(kDelta2OnBattery)) };
+        });
+        EcoFlowSource source(ecoConfig(server));
+        source.setRetryDelay(10);
+        QSignalSpy status(&source, &Source::statusUpdated);
+        QSignalSpy errors(&source, &Source::errorOccurred);
+        source.start();
+        QVERIFY(status.wait(5000));
+        QVERIFY(errors.isEmpty());
+        QCOMPARE(requestsTo(server, kDeviceListPath), 2);
     }
 
     void missingCredentials()

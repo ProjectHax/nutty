@@ -34,7 +34,7 @@ public:
     using Result = std::expected<QJsonValue, Error>;
     using Callback = std::function<void(const Result& result)>;
 
-    static constexpr int kTimeoutMs = 15000;
+    static constexpr int kTimeoutMs = 10000;
 
     EcoFlowClient(const QVariantMap& settings, const QVariantMap& secrets, QObject* parent = nullptr);
 

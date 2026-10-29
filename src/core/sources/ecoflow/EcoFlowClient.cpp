@@ -66,6 +66,12 @@ QNetworkRequest EcoFlowClient::signedRequest(const QUrl& url, const QJsonObject&
     request.setRawHeader("timestamp", sig.timestamp.toUtf8());
     request.setRawHeader("sign", sig.sign.toUtf8());
     request.setTransferTimeout(kTimeoutMs);
+    // Qt keeps an HTTP/2 connection open when a request on it times out, so
+    // once EcoFlow stops serving a connection (after hours of polling) every
+    // request queued on it times out too, until the server closes it about
+    // ten minutes later. Over HTTP/1.1 the timed-out request takes its
+    // connection down and the next one starts afresh.
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     return request;
 }
 
@@ -74,7 +80,8 @@ void EcoFlowClient::handle(QNetworkReply* reply, Callback callback)
     connect(reply, &QNetworkReply::finished, this, [reply, callback = std::move(callback)] {
         reply->deleteLater();
         const int http = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        const QByteArray body = reply->readAll();
+        // A reply that timed out is closed already.
+        const QByteArray body = reply->isOpen() ? reply->readAll() : QByteArray();
 
         if (http == 401 || http == 403) {
             callback(std::unexpected(Error { SourceError::Auth, tr("EcoFlow rejected the access key") }));
