@@ -175,6 +175,10 @@ jobs:
           # Qts ship libqwayland-egl.so + libqwayland-generic.so. Take whichever exist.
           EXTRA_PLATFORM_PLUGINS="$(cd "$QT_ROOT_DIR/plugins/platforms" && ls libqwayland*.so | paste -sd ';')"
           export EXTRA_PLATFORM_PLUGINS
+          # nutty only uses SQLite. The plugin deploys every SQL driver, and
+          # the others need client libraries the runner lacks (x86_64's Mimer
+          # driver wants libmimerapi.so), which stops it.
+          find "$QT_ROOT_DIR/plugins/sqldrivers" -name '*.so' ! -name libqsqlite.so -delete
           "./linuxdeploy-${arch}.AppImage" --appdir AppDir --plugin qt --output appimage
           mv nutty*-"${arch}".AppImage "nutty-linux-${arch}.AppImage" 2>/dev/null \
             || mv nutty*.AppImage "nutty-linux-${arch}.AppImage"
