@@ -83,6 +83,8 @@ class ThemeBridge : public QObject
 
     Q_PROPERTY(QFont font READ font NOTIFY changed)
     Q_PROPERTY(QString fontFamily READ fontFamily NOTIFY changed)
+    // The system's fixed-width family ("monospace" only exists on Linux).
+    Q_PROPERTY(QString monoFamily READ monoFamily NOTIFY changed)
     Q_PROPERTY(int fontSize READ fontSize NOTIFY changed)
     Q_PROPERTY(int fontSizeSmall READ fontSizeSmall NOTIFY changed)
     Q_PROPERTY(int fontSizeLarge READ fontSizeLarge NOTIFY changed)
@@ -160,6 +162,7 @@ public:
 
     QFont font() const { return m_font; }
     QString fontFamily() const { return m_font.family(); }
+    QString monoFamily() const { return m_monoFamily; }
     int fontSize() const { return m_fontPx; }
     int fontSizeSmall() const { return qMax(10, m_fontPx - 2); }
     int fontSizeLarge() const { return m_fontPx + 2; }
@@ -197,6 +200,7 @@ private:
     QString m_platform;
     QString m_buttonLayout;
     QFont m_font;
+    QString m_monoFamily;
     int m_fontPx = 14;
     int m_radius = 6;
     int m_windowRadius = 10;

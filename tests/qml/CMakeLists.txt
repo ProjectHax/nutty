@@ -13,6 +13,9 @@ file(GLOB NUTTY_QML_TESTS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tst_*.q
 target_sources(tst_qml PRIVATE ${NUTTY_QML_TESTS})
 
 add_test(NAME tst_qml COMMAND tst_qml -input "${CMAKE_CURRENT_SOURCE_DIR}")
+# The tests fail on any warning. qt.qpa.fonts is off because on macOS the
+# offscreen platform asks for a "Sans Serif" family that isn't installed,
+# and Core Text warns about the time it takes to look for it.
 set_tests_properties(tst_qml PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_LOGGING_RULES=*.debug=false;QT_FORCE_STDERR_LOGGING=1"
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_LOGGING_RULES=*.debug=false\;qt.qpa.fonts.warning=false;QT_FORCE_STDERR_LOGGING=1"
     TIMEOUT 180)

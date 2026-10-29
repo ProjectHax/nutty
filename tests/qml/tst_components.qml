@@ -163,6 +163,8 @@ TestCase {
 
     function test_titleBarLayout() {
         const bar = createTemporaryObject(titleBar, tc)
+        // Only Linux has a default layout; the bar is Linux-only.
+        bar.buttonLayout = "appmenu:minimize,maximize,close"
         compare(bar.leftButtons, [])
         compare(bar.rightButtons, ["minimize", "maximize", "close"])
         bar.buttonLayout = "close,minimize:appmenu"

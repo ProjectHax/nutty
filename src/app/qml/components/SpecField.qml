@@ -90,7 +90,7 @@ FormField {
                 anchors.margins: 10
                 text: root.currentText
                 color: Theme.text
-                font.family: "monospace"
+                font.family: Theme.monoFamily
                 font.pixelSize: Theme.fontSizeSmall
                 wrapMode: TextEdit.Wrap
                 selectByMouse: true

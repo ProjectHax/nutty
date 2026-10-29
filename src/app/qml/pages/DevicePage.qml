@@ -802,7 +802,7 @@ ScrollPage {
                             Layout.preferredWidth: 260
                             text: modelData.key
                             color: Theme.subtext
-                            font.family: "monospace"
+                            font.family: Theme.monoFamily
                             font.pixelSize: Theme.fontSizeSmall
                             elide: Text.ElideRight
                         }
@@ -810,7 +810,7 @@ ScrollPage {
                             Layout.fillWidth: true
                             text: modelData.value
                             color: Theme.text
-                            font.family: "monospace"
+                            font.family: Theme.monoFamily
                             font.pixelSize: Theme.fontSizeSmall
                             elide: Text.ElideRight
                         }

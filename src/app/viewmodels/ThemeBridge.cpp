@@ -102,6 +102,7 @@ ThemeBridge::ThemeBridge(QObject* parent)
     }
 
     m_font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
+    m_monoFamily = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
     if (qGuiApp) {
         m_fontPx = std::clamp(QFontInfo(m_font).pixelSize(), 12, 20);
     }
